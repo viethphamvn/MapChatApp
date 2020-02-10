@@ -5,10 +5,25 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 /**
@@ -28,6 +43,13 @@ public class userList extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+    //RecyclerView Stuff
+    private RecyclerView recyclerView;
+    private RecyclerView.LayoutManager layoutManager;
+    private RecyclerView.Adapter userListAdapter;
+    //API stuff
+    private String url = "https://kamorris.com/lab/get_locations.php";
+    user[] userList;
 
     private OnFragmentInteractionListener mListener;
 
@@ -60,6 +82,43 @@ public class userList extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+
+        RequestQueue queue = Volley.newRequestQueue(getContext());
+        // Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        try {
+                            JSONArray userListFromGet = new JSONArray(response);
+                            userList = new user[userListFromGet.length()];
+                            for (int i = 0; i < userListFromGet.length(); i++){
+                                //Instantiate userList[]
+                                JSONObject e = userListFromGet.getJSONObject(i);
+                                user person = new user(e.getString("username"), Float.valueOf(e.getString("latitude")), Float.valueOf(e.getString("longitude")));
+                            }
+                            //Instantiate RecyclerView w userList
+                            recyclerView = (RecyclerView) getView().findViewById(R.id.recyclerViewForUserList);
+                            recyclerView.setHasFixedSize(true);
+                            layoutManager = new LinearLayoutManager(getContext());
+                            recyclerView.setLayoutManager(layoutManager);
+
+                            //setAdapter
+                            recyclerView.setAdapter();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+            }
+        });
+
+        // Add the request to the RequestQueue.
+        queue.add(stringRequest);
     }
 
     @Override
