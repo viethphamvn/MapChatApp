@@ -12,6 +12,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Adapter;
+import android.widget.TextView;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -20,57 +22,38 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Objects;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link userList.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link userList#newInstance} factory method to
- * create an instance of this fragment.
- */
+
 public class userList extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+    private static final String ARG_PARAM1 = "myLatitude";
+    private static final String ARG_PARAM2 = "myLongitude";
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
     //RecyclerView Stuff
     private RecyclerView recyclerView;
     private RecyclerView.LayoutManager layoutManager;
-    private RecyclerView.Adapter userListAdapter;
+    private userListAdapter adapter;
     //API stuff
     private String url = "https://kamorris.com/lab/get_locations.php";
-    user[] userList;
-
-    private OnFragmentInteractionListener mListener;
-
-    public userList() {
-        // Required empty public constructor
-    }
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment userList.
-     */
+    ArrayList<user> userList = new ArrayList<>();
+    //
+    private Double myLat, myLon;
+    user mySelf;
+    DistanceCalculator calculator = new DistanceCalculator();
     // TODO: Rename and change types and number of parameters
-    public static userList newInstance(String param1, String param2) {
+    public static userList newInstance(Double lat, Double lon) {
         userList fragment = new userList();
         Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
+        args.putDouble(ARG_PARAM1, lat);
+        args.putDouble(ARG_PARAM2, lon);
         fragment.setArguments(args);
         return fragment;
     }
@@ -78,11 +61,22 @@ public class userList extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            myLat = getArguments().getDouble(ARG_PARAM1);
+            myLon = getArguments().getDouble(ARG_PARAM2);
+            mySelf = new user("myself",Double.valueOf(myLat),Double.valueOf(myLon));
+            mySelf.setDistanceToMe(0);
         }
 
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        final View v =  inflater.inflate(R.layout.fragment_user_list, container, false);
+        //Create userList
         RequestQueue queue = Volley.newRequestQueue(getContext());
         // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -92,20 +86,27 @@ public class userList extends Fragment {
                         // Display the first 500 characters of the response string.
                         try {
                             JSONArray userListFromGet = new JSONArray(response);
-                            userList = new user[userListFromGet.length()];
-                            for (int i = 0; i < userListFromGet.length(); i++){
+                            userList.clear();
+                            //Add myself object in index 0
+                            userList.add(mySelf);
+                            for (int i = 1; i <= userListFromGet.length(); i++){
                                 //Instantiate userList[]
-                                JSONObject e = userListFromGet.getJSONObject(i);
-                                user person = new user(e.getString("username"), Float.valueOf(e.getString("latitude")), Float.valueOf(e.getString("longitude")));
+                                JSONObject e = userListFromGet.getJSONObject(i-1);
+                                user person = new user(e.getString("username"), Double.valueOf(e.getString("latitude")), Double.valueOf(e.getString("longitude")));
+                                person.setDistanceToMe(calculator.distance(Double.valueOf(e.getString("latitude")), myLat, Double.valueOf(e.getString("longitude")), myLon));
+                                Log.d("here",person.getName() + " " + person.getDistanceToMe());
+                                userList.add(person);
                             }
+                            Collections.sort(userList);
+                            userList.remove(0);
                             //Instantiate RecyclerView w userList
-                            recyclerView = (RecyclerView) getView().findViewById(R.id.recyclerViewForUserList);
+                            recyclerView = v.findViewById(R.id.recyclerViewForUserList);
                             recyclerView.setHasFixedSize(true);
                             layoutManager = new LinearLayoutManager(getContext());
                             recyclerView.setLayoutManager(layoutManager);
-
                             //setAdapter
-                            recyclerView.setAdapter();
+                            adapter = new userListAdapter(userList);
+                            recyclerView.setAdapter(adapter);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -119,51 +120,6 @@ public class userList extends Fragment {
 
         // Add the request to the RequestQueue.
         queue.add(stringRequest);
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_user_list, container, false);
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        mListener = null;
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        return v;
     }
 }
