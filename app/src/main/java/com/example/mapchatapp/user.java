@@ -19,4 +19,12 @@ public class user implements Comparable<user> {
     public int compareTo(user o) {
         return 0;
     }
+
+    public String getName(){
+        return username;
+    }
+
+    public user getUser(){
+        return this;
+    }
 }
