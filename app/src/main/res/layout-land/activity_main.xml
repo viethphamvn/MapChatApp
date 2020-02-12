@@ -6,22 +6,23 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/userListContainer"
-        android:layout_width="185dp"
-        android:layout_height="410dp"
-        android:layout_constraintWidth_percent="0.4"
-        android:layout_marginStart="4dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <com.google.android.gms.maps.MapView
         android:id="@+id/mapView"
         android:layout_width="533dp"
         android:layout_height="404dp"
-        android:layout_constraintWidth_percent="0.6"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="1dp"
         android:layout_marginTop="4dp"
         app:layout_constraintStart_toEndOf="@+id/userListContainer"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <FrameLayout
+        android:id="@+id/userListContainer"
+        android:layout_width="197dp"
+        android:layout_height="409dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginTop="1dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+    </FrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
