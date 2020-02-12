@@ -72,10 +72,10 @@ public class userList extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(LayoutInflater inflater, final ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        final View v =  inflater.inflate(R.layout.fragment_user_list, container, false);
+        View v =  inflater.inflate(R.layout.fragment_user_list, container, false);
         //Create userList
         RequestQueue queue = Volley.newRequestQueue(getContext());
         // Request a string response from the provided URL.
@@ -100,12 +100,13 @@ public class userList extends Fragment {
                             Collections.sort(userList);
                             userList.remove(0);
                             //Instantiate RecyclerView w userList
-                            recyclerView = v.findViewById(R.id.recyclerViewForUserList);
+                            recyclerView = getView().findViewById(R.id.recyclerViewForUserList);
                             recyclerView.setHasFixedSize(true);
                             layoutManager = new LinearLayoutManager(getContext());
                             recyclerView.setLayoutManager(layoutManager);
                             //setAdapter
                             adapter = new userListAdapter(userList);
+                            adapter.setOnItemClickListener((userListAdapter.onItemClick) getActivity());
                             recyclerView.setAdapter(adapter);
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -121,5 +122,9 @@ public class userList extends Fragment {
         // Add the request to the RequestQueue.
         queue.add(stringRequest);
         return v;
+    }
+
+    public interface onItemClick{
+        void onClick(String username);
     }
 }
