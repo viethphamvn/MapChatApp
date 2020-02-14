@@ -15,7 +15,7 @@ import org.w3c.dom.Text;
 import java.util.ArrayList;
 
 public class userListAdapter extends RecyclerView.Adapter<userListAdapter.MyViewHolder> {
-    private ArrayList<user> userList = new ArrayList<>();
+    private ArrayList<user> userList;
     private onItemClick onItemClickListener;
 
     public static class MyViewHolder extends RecyclerView.ViewHolder{
@@ -53,10 +53,6 @@ public class userListAdapter extends RecyclerView.Adapter<userListAdapter.MyView
     @Override
     public int getItemCount() {
         return userList.size();
-    }
-
-    user getItem(int position){
-        return userList.get(position).getUser();
     }
 
     public void setOnItemClickListener(onItemClick parent){

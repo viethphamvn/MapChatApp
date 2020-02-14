@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -43,12 +44,15 @@ public class userList extends Fragment {
     private userListAdapter adapter;
     //API stuff
     private String url = "https://kamorris.com/lab/get_locations.php";
-    ArrayList<user> userList = new ArrayList<>();
-    //
+    public ArrayList<user> userList = new ArrayList<>();
+    //mapStuff
     private Double myLat, myLon;
     user mySelf;
     DistanceCalculator calculator = new DistanceCalculator();
-    // TODO: Rename and change types and number of parameters
+    //Interface stuff
+    private onGetUserList fragmentParent;
+
+    //-------------------------------------------------
     public static userList newInstance(Double lat, Double lon) {
         userList fragment = new userList();
         Bundle args = new Bundle();
@@ -65,7 +69,7 @@ public class userList extends Fragment {
         if (getArguments() != null) {
             myLat = getArguments().getDouble(ARG_PARAM1);
             myLon = getArguments().getDouble(ARG_PARAM2);
-            mySelf = new user("myself",Double.valueOf(myLat),Double.valueOf(myLon));
+            mySelf = new user("myself",new LatLng(myLat,myLon));
             mySelf.setDistanceToMe(0);
         }
 
@@ -92,22 +96,31 @@ public class userList extends Fragment {
                             for (int i = 1; i <= userListFromGet.length(); i++){
                                 //Instantiate userList[]
                                 JSONObject e = userListFromGet.getJSONObject(i-1);
-                                user person = new user(e.getString("username"), Double.valueOf(e.getString("latitude")), Double.valueOf(e.getString("longitude")));
-                                person.setDistanceToMe(calculator.distance(Double.valueOf(e.getString("latitude")), myLat, Double.valueOf(e.getString("longitude")), myLon));
-                                Log.d("here",person.getName() + " " + person.getDistanceToMe());
-                                userList.add(person);
+                                if (!e.getString("username").isEmpty()) {
+                                    LatLng latLng = new LatLng(Double.valueOf(e.getString("latitude")), Double.valueOf(e.getString("longitude")));
+                                    user person = new user(e.getString("username"), latLng);
+                                    person.setDistanceToMe(calculator.distance(latLng.latitude, myLat, latLng.longitude, myLon));
+                                    userList.add(person);
+                                }
                             }
                             Collections.sort(userList);
+
                             userList.remove(0);
+
                             //Instantiate RecyclerView w userList
-                            recyclerView = getView().findViewById(R.id.recyclerViewForUserList);
-                            recyclerView.setHasFixedSize(true);
-                            layoutManager = new LinearLayoutManager(getContext());
-                            recyclerView.setLayoutManager(layoutManager);
-                            //setAdapter
-                            adapter = new userListAdapter(userList);
-                            adapter.setOnItemClickListener((userListAdapter.onItemClick) getActivity());
-                            recyclerView.setAdapter(adapter);
+                            if (getView() != null) {
+                                recyclerView = getView().findViewById(R.id.recyclerViewForUserList);
+                                //setAdapter and RecyclerView
+                                adapter = new userListAdapter(userList);
+                                adapter.setOnItemClickListener((userListAdapter.onItemClick) getActivity());
+                                recyclerView.setAdapter(adapter);
+                                recyclerView.setHasFixedSize(true);
+                                layoutManager = new LinearLayoutManager(getContext());
+                                recyclerView.setLayoutManager(layoutManager);
+
+                                //Send userList to MainActivity to pass to MapFragment
+                                fragmentParent.getUserLocation(userList);
+                            }
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -124,7 +137,14 @@ public class userList extends Fragment {
         return v;
     }
 
-    public interface onItemClick{
-        void onClick(String username);
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        fragmentParent = (onGetUserList) context;
+
+    }
+
+    public interface onGetUserList{
+        void getUserLocation(ArrayList<user> userList);
     }
 }

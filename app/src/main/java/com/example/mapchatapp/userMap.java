@@ -76,7 +76,6 @@ public class userMap extends Fragment implements OnMapReadyCallback {
     }
 
     public void updateMap(ArrayList<user> userList){
-        Log.d("here","Updating map");
         if (map != null) {
             map.clear();
             for (int i = 0; i < userList.size(); i++) {

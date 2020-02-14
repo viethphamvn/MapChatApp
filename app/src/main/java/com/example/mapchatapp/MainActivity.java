@@ -8,6 +8,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -169,6 +170,9 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                 break;
             }
         }
+        Intent chatIntent = new Intent(this, ChatWindow.class);
+        chatIntent.putExtra("username",username);
+        startActivity(chatIntent);
     }
 
     @Override
