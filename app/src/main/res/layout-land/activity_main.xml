@@ -6,15 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.google.android.gms.maps.MapView
-        android:id="@+id/mapView"
-        android:layout_width="533dp"
-        android:layout_height="404dp"
-        android:layout_marginStart="1dp"
-        android:layout_marginTop="4dp"
-        app:layout_constraintStart_toEndOf="@+id/userListContainer"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <FrameLayout
         android:id="@+id/userListContainer"
         android:layout_width="197dp"
@@ -22,6 +13,19 @@
         android:layout_marginStart="1dp"
         android:layout_marginTop="1dp"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/userMapContainer"
+        android:layout_width="531dp"
+        android:layout_height="409dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginTop="1dp"
+        android:layout_marginEnd="1dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/userListContainer"
         app:layout_constraintTop_toTopOf="parent">
 
     </FrameLayout>

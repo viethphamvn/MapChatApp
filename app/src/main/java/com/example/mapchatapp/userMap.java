@@ -10,6 +10,8 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import android.os.Parcelable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,24 +30,23 @@ import java.util.ArrayList;
 
 public class userMap extends Fragment implements OnMapReadyCallback {
     private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+    //private static final String ARG_PARAM2 = "param2";
     //Map Stuff
     MapView mapView;
     GoogleMap map;
 
     // TODO: Rename and change types of parameters
-    private ArrayList<LatLng> userLocation;
-    private ArrayList<String> userName;
+    private ArrayList<user> userList;
 
     public userMap() {
         // Required empty public constructor
     }
 
-    public static userMap newInstance(ArrayList<LatLng> userLocation, ArrayList<String> userName) {
+    public static userMap newInstance(ArrayList<user> userList) {
         userMap fragment = new userMap();
         Bundle args = new Bundle();
-        args.putParcelableArrayList(ARG_PARAM1, userLocation);
-        args.putStringArrayList(ARG_PARAM2, userName);
+        args.putParcelableArrayList(ARG_PARAM1, userList);
+        //args.putStringArrayList(ARG_PARAM2, userName);
         fragment.setArguments(args);
         return fragment;
     }
@@ -54,8 +55,8 @@ public class userMap extends Fragment implements OnMapReadyCallback {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            userLocation = getArguments().getParcelableArrayList(ARG_PARAM1);
-            userName = getArguments().getStringArrayList(ARG_PARAM2);
+            userList = getArguments().getParcelableArrayList(ARG_PARAM1);
+            //userName = getArguments().getStringArrayList(ARG_PARAM2);
         }
 
     }
@@ -70,15 +71,23 @@ public class userMap extends Fragment implements OnMapReadyCallback {
             mapView = v.findViewById(R.id.mapView);
             mapView.onCreate(savedInstanceState);
             mapView.getMapAsync(this);
-            //Set marker base on location data passed in
-            if (map != null) {
-                map.clear();
-                for (int i = 0; i < userLocation.size(); i++){
-                    map.addMarker(new MarkerOptions().position(userLocation.get(i)).title(userName.get(i)));
-                }
-            }
         }
         return v;
+    }
+
+    public void updateMap(ArrayList<user> userList){
+        Log.d("here","Updating map");
+        if (map != null) {
+            map.clear();
+            for (int i = 0; i < userList.size(); i++) {
+                map.addMarker(new MarkerOptions().position(userList.get(i).getLatLng()).title(userList.get(i).getName()));
+            }
+        }
+    }
+
+    public void focusOn(user user){
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(user.getLatLng(), 15);
+        map.animateCamera(cameraUpdate);
     }
 
     @Override
@@ -134,5 +143,9 @@ public class userMap extends Fragment implements OnMapReadyCallback {
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.map = googleMap;
+        for (int i = 0; i < userList.size(); i++){
+            map.addMarker(new MarkerOptions().position(userList.get(i).getLatLng()).title(userList.get(i).getName()));
+        }
     }
+
 }

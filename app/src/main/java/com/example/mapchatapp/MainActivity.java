@@ -2,6 +2,7 @@ package com.example.mapchatapp;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -20,37 +21,30 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, userListAdapter.onItemClick {
+import java.util.ArrayList;
+
+public class MainActivity extends AppCompatActivity implements userListAdapter.onItemClick, userList.onGetUserList {
     LocationManager locationManager;
     LocationListener locationListener;
     Location myLocation;
-    //Map Stuff
-    MapView mapView;
-    Marker marker;
-    GoogleMap map;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //Set up MapView
-        if (findViewById(R.id.mapView) != null) {
-            mapView = findViewById(R.id.mapView);
-            mapView.onCreate(savedInstanceState);
-            mapView.getMapAsync(this);
-        }
-
         //Get Location Service
         locationManager = getSystemService(LocationManager.class);
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
+                Log.d("here","Location changed");
                 myLocation = location;
-                generateUserListFragment(location);
+                generateUserListFragment(myLocation);
             }
 
             @Override
@@ -73,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkCallingOrSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 111);
         } else {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30000, 10, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 10, locationListener);
         }
     }
 
@@ -82,28 +76,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30000, 10, locationListener);
-            if (myLocation != null) {
-                generateUserListFragment(myLocation);
-            }
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 10, locationListener);
         }
     }
 
     private void generateUserListFragment(Location location) {
+        Log.d("here","heree");
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        //Mark my location on Google Map
-        if (mapView != null) {
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
-            if (map != null) {
-                map.animateCamera(cameraUpdate);
-                if (marker == null) {
-                    map.addMarker(new MarkerOptions().position(latLng)
-                            .title("Your current location"));
-                } else {
-                    marker.setPosition(latLng);
-                }
-            }
-        }
+//        //Mark my location on Google Map
+//        if (mapView != null) {
+//            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
+//            if (map != null) {
+//                map.animateCamera(cameraUpdate);
+//                if (marker == null) {
+//                    map.addMarker(new MarkerOptions().position(latLng)
+//                            .title("Your current location"));
+//                } else {
+//                    marker.setPosition(latLng);
+//                }
+//            }
+//        }
         userList fragment = (userList) getSupportFragmentManager().findFragmentByTag("userListFragment");
         if (fragment != null) {
             getSupportFragmentManager().beginTransaction()
@@ -111,39 +103,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .commit();
         }
         getSupportFragmentManager().beginTransaction()
-                .add(R.id.userListContainer, userList.newInstance(latLng.latitude, latLng.longitude), "userListFragment")
+                .replace(R.id.userListContainer, userList.newInstance(latLng.latitude, latLng.longitude), "userListFragment")
                 .commit();
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-        if (mapView != null) {
-            mapView.onStart();
+    public void onClick(String username) {
+        //map focus on username
+        ArrayList<user> userList = ((userList)getSupportFragmentManager().findFragmentByTag("userListFragment")).userList;
+        for (user u : userList){
+            if (u.getName() == username){
+                ((userMap)getSupportFragmentManager().findFragmentByTag("userMapFragment")).focusOn(u);
+                break;
+            }
         }
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        if (mapView != null) {
-            mapView.onResume();
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (mapView != null) {
-            mapView.onPause();
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (mapView != null) {
-            mapView.onStop();
+    public void getUserLocation(ArrayList<user> userList) {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag("userMapFragment");
+        if (fragment == null){
+            Log.d("here","Map Fragment is null");
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.userMapContainer, userMap.newInstance(userList),"userMapFragment")
+                    .commit();
+        } else {
+            //tell Map fragment to update
+            Log.d("here","Map Fragment is not null");
+            ((userMap)getSupportFragmentManager().findFragmentByTag("userMapFragment")).updateMap(userList);
         }
     }
 
@@ -151,38 +138,5 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         super.onDestroy();
         locationManager.removeUpdates(locationListener);
-        if (mapView != null) {
-            mapView.onDestroy();
-        }
-    }
-
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState, @NonNull PersistableBundle outPersistentState) {
-        super.onSaveInstanceState(outState, outPersistentState);
-        if (mapView != null) {
-            mapView.onSaveInstanceState(outState);
-        }
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        if (mapView != null) {
-            mapView.onLowMemory();
-        }
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        map = googleMap;
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        }
-
-    }
-
-    @Override
-    public void onClick(String username) {
-        Log.d("here",username);
     }
 }
