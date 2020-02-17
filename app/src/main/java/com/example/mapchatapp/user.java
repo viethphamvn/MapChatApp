@@ -62,6 +62,14 @@ public class user implements Comparable<user>, Parcelable {
         return distanceToMe;
     }
 
+    public double getLat(){
+        return latLng.latitude;
+    }
+
+    public double getLon(){
+        return latLng.longitude;
+    }
+
     @Override
     public int describeContents() {
         return 0;
