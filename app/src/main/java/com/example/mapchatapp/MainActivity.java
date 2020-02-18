@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     LocationListener locationListener;
     Location myLocation;
     Timer timerRef;
+    RequestQueue queue;
 
     private String url = "https://kamorris.com/lab/get_locations.php";
     public ArrayList<user> userArrayList = new ArrayList<>();
@@ -73,6 +74,8 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        queue = Volley.newRequestQueue(this);
 
         //Get Location Service
         locationManager = getSystemService(LocationManager.class);
@@ -123,12 +126,13 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                         }
                     });
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTime, minDis, locationListener);
         }
     }
 
     class UpdateUserList extends TimerTask {
         public void run() {
-            RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
             // Request a string response from the provided URL.
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     new Response.Listener<String>() {
@@ -205,6 +209,8 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                         }
                     });
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTime, minDis, locationListener);
         }
     }
 
@@ -213,11 +219,11 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
         if (fragment != null) {
             getSupportFragmentManager().beginTransaction()
                     .remove(fragment)
-                    .commit();
+                    .commitAllowingStateLoss();
         }
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.userListContainer, userList.newInstance(userArrayList), "userListFragment")
-                .commit();
+                .commitAllowingStateLoss();
     }
 
     @Override
@@ -250,7 +256,6 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     }
 
     public void UpdateMyLocation(){
-        RequestQueue queue = Volley.newRequestQueue(this);
         String url = "https://kamorris.com/lab/register_location.php";
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 new Response.Listener<String>()
@@ -286,7 +291,12 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     protected void onDestroy() {
         super.onDestroy();
         locationManager.removeUpdates(locationListener);
-        timerRef.cancel();
-        timerRef.purge();
+//        timerRef.cancel();
+//        timerRef.purge();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
     }
 }
