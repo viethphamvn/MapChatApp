@@ -3,6 +3,7 @@ package com.example.mapchatapp;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -43,7 +44,12 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
@@ -54,6 +60,11 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     LocationListener locationListener;
     Location myLocation;
     Timer timerRef;
+    RequestQueue queue;
+
+    private String url = "https://kamorris.com/lab/get_locations.php";
+    public ArrayList<user> userArrayList = new ArrayList<>();
+    public DistanceCalculator calculator = new DistanceCalculator();
 
     private FusedLocationProviderClient fusedLocationClient;
 
@@ -63,6 +74,8 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        queue = Volley.newRequestQueue(this);
 
         //Get Location Service
         locationManager = getSystemService(LocationManager.class);
@@ -103,22 +116,72 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                             // Got last known location. In some rare situations this can be null.
                             if (location != null) {
                                 myLocation = location;
+                                UpdateMyLocation();
                                 if (timerRef == null) {
                                     Timer timer = new Timer();
                                     timerRef = timer;
                                     timer.schedule(new UpdateUserList(), 0, 30000);
                                 }
-                                generateUserListFragment(myLocation);
                             }
                         }
                     });
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTime, minDis, locationListener);
         }
     }
 
     class UpdateUserList extends TimerTask {
         public void run() {
-            generateUserListFragment(myLocation);
+            // Request a string response from the provided URL.
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            // Display the first 500 characters of the response string.
+                            try {
+                                //But first, create a user instance for myself in order to sort the user list
+                                LatLng myLatLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+                                user mySelf = new user("mySelf", myLatLng);
+                                mySelf.setDistanceToMe(0);
+
+                                //Start reading the response
+                                JSONArray userListFromGet = new JSONArray(response);
+                                userArrayList.clear();
+                                //Add myself object in index 0
+                                userArrayList.add(mySelf);
+                                for (int i = 1; i <= userListFromGet.length(); i++){
+                                    //Instantiate userList[]
+                                    JSONObject e = userListFromGet.getJSONObject(i-1);
+                                    if (!e.getString("username").isEmpty()) {
+                                        LatLng latLng = new LatLng(Double.valueOf(e.getString("latitude")), Double.valueOf(e.getString("longitude")));
+                                        user person = new user(e.getString("username"), latLng);
+                                        person.setDistanceToMe(calculator.distance(latLng.latitude, mySelf.getLatLng().latitude, latLng.longitude, mySelf.getLatLng().longitude));
+                                        userArrayList.add(person);
+                                    }
+                                }
+
+                                //Sort the current list
+                                Collections.sort(userArrayList);
+
+                                //Remove mySelf from the list
+                                userArrayList.remove(0);
+
+                                //Successfully get use list from server
+                                //Time to create a userList Fragment
+                                //Pass in the userList
+                                generateUserListFragment(userArrayList);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+
+                }
+            });
+            queue.add(stringRequest);
         }
     }
 
@@ -136,28 +199,31 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                             // Got last known location. In some rare situations this can be null.
                             if (location != null) {
                                 myLocation = location;
-                                Timer timer = new Timer();
-                                //Start thread to getUserList every 30 seconds
-                                timer.schedule(new UpdateUserList(), 0, 30000);
-                                generateUserListFragment(myLocation);
+                                UpdateMyLocation();
+                                if (timerRef == null) {
+                                    Timer timer = new Timer();
+                                    timerRef = timer;
+                                    timer.schedule(new UpdateUserList(), 0, 30000);
+                                }
                             }
                         }
                     });
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, minDis, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, minTime, minDis, locationListener);
         }
     }
 
-    private void generateUserListFragment(Location location) {
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+    private void generateUserListFragment(ArrayList<user> userArrayList) {
         userList fragment = (userList) getSupportFragmentManager().findFragmentByTag("userListFragment");
         if (fragment != null) {
             getSupportFragmentManager().beginTransaction()
                     .remove(fragment)
-                    .commit();
+                    .commitAllowingStateLoss();
         }
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.userListContainer, userList.newInstance(latLng.latitude, latLng.longitude), "userListFragment")
-                .commit();
+                .replace(R.id.userListContainer, userList.newInstance(userArrayList), "userListFragment")
+                .commitAllowingStateLoss();
     }
 
     @Override
@@ -170,9 +236,9 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
                 break;
             }
         }
-        Intent chatIntent = new Intent(this, ChatWindow.class);
-        chatIntent.putExtra("username",username);
-        startActivity(chatIntent);
+//        Intent chatIntent = new Intent(this, ChatWindow.class);
+//        chatIntent.putExtra("username",username);
+//        startActivity(chatIntent);
     }
 
     @Override
@@ -190,7 +256,6 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     }
 
     public void UpdateMyLocation(){
-        RequestQueue queue = Volley.newRequestQueue(this);
         String url = "https://kamorris.com/lab/register_location.php";
         StringRequest postRequest = new StringRequest(Request.Method.POST, url,
                 new Response.Listener<String>()
@@ -226,7 +291,12 @@ public class MainActivity extends AppCompatActivity implements userListAdapter.o
     protected void onDestroy() {
         super.onDestroy();
         locationManager.removeUpdates(locationListener);
-        timerRef.cancel();
-        timerRef.purge();
+//        timerRef.cancel();
+//        timerRef.purge();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
     }
 }

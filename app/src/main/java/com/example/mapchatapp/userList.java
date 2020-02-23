@@ -35,29 +35,22 @@ import java.util.Objects;
 
 
 public class userList extends Fragment {
-    private static final String ARG_PARAM1 = "myLatitude";
-    private static final String ARG_PARAM2 = "myLongitude";
+    private static final String ARG_PARAM1 = "userList";
 
     //RecyclerView Stuff
     private RecyclerView recyclerView;
     private RecyclerView.LayoutManager layoutManager;
     private userListAdapter adapter;
     //API stuff
-    private String url = "https://kamorris.com/lab/get_locations.php";
     public ArrayList<user> userList = new ArrayList<>();
-    //mapStuff
-    private Double myLat, myLon;
-    user mySelf;
-    DistanceCalculator calculator = new DistanceCalculator();
     //Interface stuff
     private onGetUserList fragmentParent;
 
     //-------------------------------------------------
-    public static userList newInstance(Double lat, Double lon) {
+    public static userList newInstance(ArrayList<user> userList) {
         userList fragment = new userList();
         Bundle args = new Bundle();
-        args.putDouble(ARG_PARAM1, lat);
-        args.putDouble(ARG_PARAM2, lon);
+        args.putParcelableArrayList(ARG_PARAM1, userList);
         fragment.setArguments(args);
         return fragment;
     }
@@ -65,12 +58,8 @@ public class userList extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         if (getArguments() != null) {
-            myLat = getArguments().getDouble(ARG_PARAM1);
-            myLon = getArguments().getDouble(ARG_PARAM2);
-            mySelf = new user("myself",new LatLng(myLat,myLon));
-            mySelf.setDistanceToMe(0);
+            userList = getArguments().getParcelableArrayList(ARG_PARAM1);
         }
 
     }
@@ -80,60 +69,19 @@ public class userList extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View v =  inflater.inflate(R.layout.fragment_user_list, container, false);
-        //Create userList
-        RequestQueue queue = Volley.newRequestQueue(getContext());
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
-                        try {
-                            JSONArray userListFromGet = new JSONArray(response);
-                            userList.clear();
-                            //Add myself object in index 0
-                            userList.add(mySelf);
-                            for (int i = 1; i <= userListFromGet.length(); i++){
-                                //Instantiate userList[]
-                                JSONObject e = userListFromGet.getJSONObject(i-1);
-                                if (!e.getString("username").isEmpty()) {
-                                    LatLng latLng = new LatLng(Double.valueOf(e.getString("latitude")), Double.valueOf(e.getString("longitude")));
-                                    user person = new user(e.getString("username"), latLng);
-                                    person.setDistanceToMe(calculator.distance(latLng.latitude, myLat, latLng.longitude, myLon));
-                                    userList.add(person);
-                                }
-                            }
-                            Collections.sort(userList);
+        if (v != null) {
+            recyclerView = v.findViewById(R.id.recyclerViewForUserList);
+            //setAdapter and RecyclerView
+            adapter = new userListAdapter(userList);
+            adapter.setOnItemClickListener((userListAdapter.onItemClick) getActivity());
+            recyclerView.setAdapter(adapter);
+            recyclerView.setHasFixedSize(true);
+            layoutManager = new LinearLayoutManager(getContext());
+            recyclerView.setLayoutManager(layoutManager);
 
-                            userList.remove(0);
-
-                            //Instantiate RecyclerView w userList
-                            if (getView() != null) {
-                                recyclerView = getView().findViewById(R.id.recyclerViewForUserList);
-                                //setAdapter and RecyclerView
-                                adapter = new userListAdapter(userList);
-                                adapter.setOnItemClickListener((userListAdapter.onItemClick) getActivity());
-                                recyclerView.setAdapter(adapter);
-                                recyclerView.setHasFixedSize(true);
-                                layoutManager = new LinearLayoutManager(getContext());
-                                recyclerView.setLayoutManager(layoutManager);
-
-                                //Send userList to MainActivity to pass to MapFragment
-                                fragmentParent.getUserLocation(userList);
-                            }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-
-            }
-        });
-
-        // Add the request to the RequestQueue.
-        queue.add(stringRequest);
+            //Send userList to MainActivity to pass to MapFragment
+            fragmentParent.getUserLocation(userList);
+        }
         return v;
     }
 
